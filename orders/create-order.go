@@ -53,6 +53,7 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request)  {
         return
     }
 
+    w.Header().Set("Content-type", "applicaton/json")
     encoder := json.NewEncoder(w)
     encoder.Encode(order)
 }

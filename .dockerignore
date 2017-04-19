@@ -2,3 +2,4 @@
 *.iml
 ocs-orders
 gin-bin
+/.env
