@@ -4,13 +4,12 @@ import (
     "os"
 
     "github.com/codegangsta/negroni"
+    "github.com/tobyjsullivan/ocs-orders/orders"
 )
 
 func main() {
-    r := buildRoutes()
-
     n := negroni.New()
-    n.UseHandler(r)
+    n.UseHandler(orders.Routes())
 
     port := os.Getenv("PORT")
     if port == "" {
