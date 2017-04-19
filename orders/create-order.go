@@ -4,7 +4,18 @@ import (
     "net/http"
     "encoding/json"
     "github.com/satori/go.uuid"
+    "github.com/aws/aws-sdk-go/service/sns"
+    "github.com/aws/aws-sdk-go/aws/session"
+    "github.com/aws/aws-sdk-go/aws"
 )
+
+var orderAcceptedTopicArn string = "arn:aws:sns:us-west-2:110303772622:ocs-order_accepted"
+var snsClient *sns.SNS
+
+func init() {
+    sess := session.Must(session.NewSession())
+    snsClient = sns.New(sess)
+}
 
 type req struct {
     Name string `json:"name"`
@@ -26,6 +37,7 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request)  {
     err := decoder.Decode(&request)
     if err != nil {
         http.Error(w, err.Error(), http.StatusBadRequest)
+        return
     }
 
     defer r.Body.Close()
@@ -38,6 +50,7 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request)  {
     err = fireOrderAccepted(order)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
     }
 
     encoder := json.NewEncoder(w)
@@ -45,7 +58,22 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request)  {
 }
 
 func fireOrderAccepted(order *order) error {
-    // TODO Submit order to OrderAccepted queue
+    msg, err := json.Marshal(order)
+    if err != nil {
+        return err
+    }
+
+    params := &sns.PublishInput{
+        TopicArn: aws.String(orderAcceptedTopicArn),
+        Message: aws.String(string(msg)),
+    }
+
+    resp, err := snsClient.Publish(params)
+    if err != nil {
+        return err
+    }
+
+    println("Published OrderAccepted event", resp.GoString())
 
     return nil
 }
