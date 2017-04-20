@@ -7,14 +7,18 @@ import (
     "github.com/aws/aws-sdk-go/service/sns"
     "github.com/aws/aws-sdk-go/aws/session"
     "github.com/aws/aws-sdk-go/aws"
+    "log"
+    "os"
 )
 
 var orderAcceptedTopicArn string = "arn:aws:sns:us-west-2:110303772622:ocs-order_accepted"
 var snsClient *sns.SNS
+var logger *log.Logger
 
 func init() {
     sess := session.Must(session.NewSession())
     snsClient = sns.New(sess)
+    logger = log.New(os.Stdout, "[orders]", 0)
 }
 
 type req struct {
@@ -32,13 +36,16 @@ type order struct {
 }
 
 func createOrderHandler(w http.ResponseWriter, r *http.Request)  {
+    logger.Println("Create order request received.")
     decoder := json.NewDecoder(r.Body)
     var request req
     err := decoder.Decode(&request)
     if err != nil {
+        logger.Println("JSON deserialization error.", err.Error())
         http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }
+    logger.Printf("Request: %v\n", request)
 
     defer r.Body.Close()
 
@@ -49,6 +56,7 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request)  {
 
     err = fireOrderAccepted(order)
     if err != nil {
+        logger.Println("Error publishing OrderAccepte event.", err.Error())
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
@@ -56,6 +64,7 @@ func createOrderHandler(w http.ResponseWriter, r *http.Request)  {
     w.Header().Set("Content-type", "applicaton/json")
     encoder := json.NewEncoder(w)
     encoder.Encode(order)
+    logger.Printf("Responded with order: %v\n", order)
 }
 
 func fireOrderAccepted(order *order) error {
@@ -74,7 +83,7 @@ func fireOrderAccepted(order *order) error {
         return err
     }
 
-    println("Published OrderAccepted event", resp.GoString())
+    logger.Println("Published OrderAccepted event", resp.GoString())
 
     return nil
 }
